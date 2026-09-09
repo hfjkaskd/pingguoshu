@@ -1,0 +1,12 @@
+{
+  "source_url": "http://test.api.pandamerge.top/swagger/doc.json",
+  "local_file": "E:\\Puzzle_Project\\ARealTools\\API替换\\swagger-doc.json",
+  "fetched_at": "2026-08-19T10:44:39+08:00",
+  "swagger_version": "2.0",
+  "path_count": 1658,
+  "operation_count": 1658,
+  "tag_count": 89,
+  "definition_count": 3001,
+  "sha256": "31c35db56a6606f0868ec2aafe6e3f993458e834fc7e7205129a6826b7634ccc",
+  "cache_policy": "存在且 JSON 可解析时优先使用本地文件；缺失或损坏时重新下载。"
+}

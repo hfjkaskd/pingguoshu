@@ -1,0 +1,18 @@
+{
+    "name": "Coffee.UIParticle.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ef5609da04560ee458ca839855431da9"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

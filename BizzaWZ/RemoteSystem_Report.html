@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Remote Group System 远端配置路径与下载流程报告</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #172033;
+      --muted: #63708a;
+      --line: #dce3ee;
+      --primary: #3157d5;
+      --primary-soft: #eaf0ff;
+      --teal: #0b8c82;
+      --teal-soft: #e7f8f5;
+      --orange: #b86209;
+      --orange-soft: #fff4e5;
+      --red: #b8324c;
+      --red-soft: #fff0f3;
+      --shadow: 0 12px 30px rgba(29, 48, 89, .08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre, .path { font-family: Consolas, "SFMono-Regular", Menlo, monospace; }
+    code { color: #263a74; background: #eef2f8; padding: 2px 6px; border-radius: 5px; }
+
+    .shell { max-width: 1240px; margin: 0 auto; padding: 28px 22px 64px; }
+    .hero {
+      padding: 34px 38px;
+      color: #fff;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(148, 190, 255, .28), transparent 34%),
+        linear-gradient(135deg, #1f326e 0%, #3157d5 52%, #3476bd 100%);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 8px; font-size: 13px; letter-spacing: .12em; opacity: .78; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); line-height: 1.18; letter-spacing: -.03em; }
+    .hero p { max-width: 850px; margin: 18px 0 0; color: rgba(255,255,255,.88); font-size: 16px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
+    .hero-meta span { padding: 6px 11px; border: 1px solid rgba(255,255,255,.24); border-radius: 999px; background: rgba(255,255,255,.11); font-size: 13px; }
+
+    .toc { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 30px; }
+    .toc a { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 13px; }
+    .toc a:hover { color: var(--primary); border-color: #afc0f7; text-decoration: none; }
+
+    section { margin-top: 32px; }
+    .section-title { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+    h2 { margin: 0; font-size: 25px; letter-spacing: -.02em; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    .section-title p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 5px 18px rgba(29, 48, 89, .04); }
+    .card.soft { background: var(--surface-soft); }
+    .card p:last-child { margin-bottom: 0; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+
+    .summary { border-left: 5px solid var(--primary); background: var(--primary-soft); }
+    .warning { border-left: 5px solid var(--orange); background: var(--orange-soft); }
+    .danger { border-left: 5px solid var(--red); background: var(--red-soft); }
+    .success { border-left: 5px solid var(--teal); background: var(--teal-soft); }
+
+    .metric { display: flex; flex-direction: column; gap: 4px; min-height: 98px; }
+    .metric .label { color: var(--muted); font-size: 13px; }
+    .metric .value { font-size: 18px; font-weight: 700; word-break: break-word; }
+    .metric .sub { color: var(--muted); font-size: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { color: #43516b; background: #f6f8fc; font-size: 13px; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 5px 18px rgba(29, 48, 89, .04); }
+    .path { display: inline-block; color: #21376f; line-height: 1.45; word-break: break-all; }
+    .path-action { margin-top: 7px; padding: 5px 9px; border: 1px solid #b9c8f4; border-radius: 7px; background: #f4f7ff; color: #3157d5; cursor: pointer; font: inherit; font-size: 12px; }
+    .path-action:hover { background: #e7edff; border-color: #8ea7f2; }
+    .path-action.secondary { border-color: #c8d4df; background: #f8fafc; color: #59677f; }
+    .path-action.secondary:hover { background: #eef3f8; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #edf1f8; color: #4d5a72; font-size: 12px; white-space: nowrap; }
+    .tag.remote { background: var(--primary-soft); color: #2f4fb2; }
+    .tag.local { background: var(--teal-soft); color: #08796f; }
+    .tag.cache { background: #f0ebff; color: #6541a6; }
+    .tag.editor { background: var(--orange-soft); color: #9c590d; }
+
+    .decision { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; }
+    .decision-list { display: grid; gap: 10px; }
+    .decision-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+    .decision-row strong { color: #3c4b68; }
+
+    .calculator { border: 1px solid #cbd7f6; background: linear-gradient(180deg, #f5f8ff, #fff); }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    label { display: flex; flex-direction: column; gap: 5px; color: #4b5870; font-size: 13px; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 9px 10px; border: 1px solid #cbd5e4; border-radius: 9px; background: #fff; color: var(--ink); font: inherit; }
+    input:focus { outline: 2px solid #aec0ff; border-color: var(--primary); }
+    .checks { display: flex; flex-wrap: wrap; gap: 14px; margin: 14px 0; }
+    .checks label { flex-direction: row; align-items: center; gap: 7px; }
+    .checks input { accent-color: var(--primary); }
+    .calc-output { margin-top: 15px; padding: 14px; border-radius: 11px; background: #172449; color: #eef3ff; }
+    .calc-output .path { display: block; margin: 5px 0; color: #dce7ff; }
+    .calc-note { margin-top: 10px; color: #d5defa; font-size: 13px; }
+
+    .flow { display: grid; gap: 10px; }
+    .flow-row { display: grid; grid-template-columns: 52px 1fr 1fr; align-items: stretch; gap: 10px; }
+    .flow-index { display: grid; place-items: center; border-radius: 12px; background: #e9eefc; color: var(--primary); font-weight: 800; }
+    .flow-box { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .flow-box strong { display: block; margin-bottom: 3px; }
+    .flow-box p { margin: 0; color: var(--muted); font-size: 13px; }
+    .flow-box.remote-box { border-color: #c5d3fb; background: #f5f8ff; }
+    .flow-box.local-box { border-color: #b9e5df; background: #f1fbf9; }
+    .flow-box.fail-box { border-color: #f1c6cf; background: #fff6f7; }
+
+    .priority { display: grid; gap: 10px; }
+    .priority-item { display: grid; grid-template-columns: 60px 1fr; gap: 14px; align-items: start; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .priority-level { padding: 4px 8px; border-radius: 7px; text-align: center; font-size: 12px; font-weight: 800; }
+    .p0 { background: var(--red-soft); color: var(--red); }
+    .p1 { background: var(--orange-soft); color: var(--orange); }
+    .p2 { background: var(--primary-soft); color: var(--primary); }
+
+    .local-stat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .local-stat { padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .local-stat .number { display: block; margin-top: 2px; color: var(--primary); font-size: 24px; font-weight: 800; line-height: 1.2; }
+    .local-stat .caption { color: var(--muted); font-size: 12px; }
+    .file-browser { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); gap: 16px; }
+    .file-list { display: grid; gap: 7px; align-content: start; }
+    .file-entry { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+    .file-entry:hover, .file-entry.active { border-color: #9eb3f2; background: #f4f7ff; }
+    .file-entry strong { display: block; font-size: 13px; }
+    .file-entry span { display: block; margin-top: 2px; color: var(--muted); font-family: Consolas, monospace; font-size: 11px; word-break: break-all; }
+    .preview-panel { min-height: 310px; padding: 18px; border: 1px solid #cbd7f6; border-radius: 14px; background: linear-gradient(180deg, #f7f9ff, #fff); }
+    .preview-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .preview-status { padding: 3px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-size: 12px; white-space: nowrap; }
+    .preview-status.missing { background: var(--red-soft); color: var(--red); }
+    .preview-status.virtual { background: var(--primary-soft); color: var(--primary); }
+    .preview-content { margin-top: 13px; padding: 13px; min-height: 180px; border-radius: 10px; background: #172449; color: #eaf0ff; white-space: pre-wrap; word-break: break-word; font: 12px/1.65 Consolas, "Microsoft YaHei", monospace; }
+    .preview-meta { margin-top: 10px; color: var(--muted); font-size: 12px; }
+
+    details { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+    details + details { margin-top: 9px; }
+    summary { cursor: pointer; padding: 12px 14px; color: #334263; font-weight: 700; }
+    details > div { padding: 0 14px 14px; color: var(--muted); }
+    ul { margin-top: 8px; }
+    li + li { margin-top: 5px; }
+
+    footer { margin-top: 42px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 880px) {
+      .grid-2, .grid-3, .decision { grid-template-columns: 1fr; }
+      .flow-row { grid-template-columns: 42px 1fr; }
+      .flow-row > :last-child { grid-column: 2; }
+      .local-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .file-browser { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .shell { padding: 14px 12px 40px; }
+      .hero { padding: 26px 22px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .decision-row { grid-template-columns: 1fr; gap: 4px; }
+      th, td { padding: 10px 9px; }
+      .local-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">BizzaWZ / RemoteSystem / READ-ONLY REPORT</p>
+      <h1>远端配置路径与下载流程</h1>
+      <p>这套系统的核心行为是“一次性 AB 分组 + 下载一个分组二进制包 + 本地缓存复用”。本报告把远端文件如何组织、运行时如何拼接 URL、什么时候请求、什么时候使用缓存和 Default 回退集中列出。</p>
+      <div class="hero-meta">
+        <span>报告基于当前工作区代码与资源</span>
+        <span>未修改 Assets 源码与资源</span>
+        <span>当前为公共模式</span>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="报告目录">
+      <a href="#summary">结论</a>
+      <a href="#config">当前配置</a>
+      <a href="#paths">路径索引</a>
+      <a href="#calculator">路径计算器</a>
+      <a href="#flow">下载流程</a>
+      <a href="#boundaries">边界与现状</a>
+      <a href="#optimize">优化建议</a>
+    </nav>
+
+    <section id="summary">
+      <div class="section-title">
+        <h2>一页结论</h2>
+        <p>先确定系统定位，再决定如何优化</p>
+      </div>
+      <div class="card summary">
+        <h3>它不是持续同步器，而是“分组选择器 + 单文件下载器”</h3>
+        <p>首次没有有效分组记录时，运行时先请求 <code>Common/group.bytes</code>（国家模式下为 <code>{Country}/group.bytes</code>），解密并解析权重，随机选出一个 <code>UserGroupName</code>。选中 <code>Default</code> 时读取包内本地文件；选中其它组时只请求对应的 <code>Common/gamedata/{GroupName}.bytes</code> 或国家目录文件。成功后写入 <code>PlayerPrefs</code> 和沙盒缓存，后续启动直接复用。</p>
+        <p>当前工程里没有找到业务代码真正解析并消费远端关卡二进制；RemoteSystem 目前主要完成拉取、缓存、状态记录和对外暴露字节接口。</p>
+      </div>
+    </section>
+
+    <section id="config">
+      <div class="section-title">
+        <h2>当前运行时配置</h2>
+        <p>来自 Assets/Resources/RemoteGroupRuntimeConfig.bytes 的实际解密结果</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card metric"><span class="label">远端根地址</span><span class="value">https://bizzatest.popemusic.us/</span><span class="sub">用于拼接 Common、国家目录及文件路径</span></div>
+        <div class="card metric"><span class="label">分组策略文件</span><span class="value">group.bytes</span><span class="sub">远端响应是 RGCFG1 + Base64 包装</span></div>
+        <div class="card metric"><span class="label">关卡目录</span><span class="value">gamedata</span><span class="sub">只下载随机命中的分组文件</span></div>
+        <div class="card metric"><span class="label">公共目录</span><span class="value">Common</span><span class="sub">公共策略和公共非 Default 关卡统一放置</span></div>
+        <div class="card metric"><span class="label">Default 分组名</span><span class="value">Default</span><span class="sub">Default 永远使用包内本地文件</span></div>
+        <div class="card metric"><span class="label">超时 / 重试</span><span class="value">5 秒 / 2 次</span><span class="sub">最多 3 次请求，不含额外退避等待</span></div>
+        <div class="card metric"><span class="label">国家路径开关</span><span class="value">Group=false / Level=false</span><span class="sub">当前实际使用公共 URL</span></div>
+      </div>
+      <div class="card warning" style="margin-top:16px">
+        <strong>当前工作区状态：</strong> 未找到 <code>Assets/StreamingAssets/RemoteGroup/Default.bytes</code>；<code>Assets/RemoteData</code> 下存在一份旧/测试样例，但运行时代码不会从该目录读取。<code>RemoteUpload</code> 当前未发现正式远端资源文件。
+      </div>
+    </section>
+
+    <section id="paths">
+      <div class="section-title">
+        <h2>远端文件路径索引</h2>
+        <p>花括号代表运行时变量；Default 不走远端下载</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>资源 / 状态</th><th>运行时或上传路径</th><th>何时使用</th><th>归属</th><th>直观看文件</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>运行时元配置</strong></td>
+              <td><span class="path">Assets/Resources/RemoteGroupRuntimeConfig.bytes</span></td>
+              <td>启动时本地读取，提供 RootUrl、文件名、超时、重试和国家开关。</td>
+              <td><span class="tag local">包内本地</span></td>
+              <td><button class="path-action" data-preview="runtime-config">查看本地配置</button></td>
+            </tr>
+            <tr>
+              <td><strong>公共分组策略</strong></td>
+              <td><span class="path">{RemoteRootUrl}/Common/group.bytes</span></td>
+              <td><code>CountryGroupEnabled=false</code> 时使用；当前工程实际走此公共路径。</td>
+              <td><span class="tag remote">远端 GET</span></td>
+              <td><button class="path-action" data-preview="remote-public-strategy">查看模拟文件</button></td>
+            </tr>
+            <tr>
+              <td><strong>国家分组策略</strong></td>
+              <td><span class="path">{RemoteRootUrl}/{Country}/group.bytes</span></td>
+              <td><code>CountryGroupEnabled=true</code> 且 <code>CountryType</code> 是具体国家时使用。</td>
+              <td><span class="tag remote">远端 GET</span></td>
+              <td><button class="path-action" data-preview="remote-country-strategy">查看模拟文件</button></td>
+            </tr>
+            <tr>
+              <td><strong>公共非 Default 关卡</strong></td>
+              <td><span class="path">{RemoteRootUrl}/Common/gamedata/{GroupName}.bytes</span></td>
+              <td><code>CountryLevelEnabled=false</code> 时使用；当前工程实际走此公共路径。</td>
+              <td><span class="tag remote">远端 GET</span></td>
+              <td><button class="path-action" data-preview="remote-public-game">查看模拟文件</button></td>
+            </tr>
+            <tr>
+              <td><strong>国家非 Default 关卡</strong></td>
+              <td><span class="path">{RemoteRootUrl}/{Country}/gamedata/{GroupName}.bytes</span></td>
+              <td><code>CountryLevelEnabled=true</code> 且 <code>CountryType</code> 是具体国家时使用。</td>
+              <td><span class="tag remote">远端 GET</span></td>
+              <td><button class="path-action" data-preview="remote-country-game">查看模拟文件</button></td>
+            </tr>
+            <tr>
+              <td><strong>本地 Default</strong></td>
+              <td><span class="path">Assets/StreamingAssets/RemoteGroup/Default.bytes</span></td>
+              <td>抽到 Default、国家为 None 且开启国家配置、或远端流程失败时使用。</td>
+              <td><span class="tag local">包内回退</span></td>
+              <td><button class="path-action" data-preview="local-default">查看本地状态</button></td>
+            </tr>
+            <tr>
+              <td><strong>策略沙盒缓存</strong></td>
+              <td><span class="path">Application.persistentDataPath/RemoteGroup/group.bytes</span></td>
+              <td>远端策略请求成功后写入；当前运行时没有用它来复用策略。</td>
+              <td><span class="tag cache">沙盒写入</span></td>
+              <td><button class="path-action secondary" data-preview="strategy-cache">查看模拟缓存</button></td>
+            </tr>
+            <tr>
+              <td><strong>分组关卡沙盒缓存</strong></td>
+              <td><span class="path">Application.persistentDataPath/RemoteGroup/gamedata/{GroupName}.bytes</span></td>
+              <td>非 Default 下载成功后写入；后续启动优先读取该文件。</td>
+              <td><span class="tag cache">沙盒复用</span></td>
+              <td><button class="path-action secondary" data-preview="game-cache">查看模拟缓存</button></td>
+            </tr>
+            <tr>
+              <td><strong>正式分组记录</strong></td>
+              <td><span class="path">PlayerPrefs: RemoteGroup.AssignmentCompleted<br/>PlayerPrefs: RemoteGroup.UserGroupName</span></td>
+              <td>只有数据校验成功后写入；没有完成标记就会重新请求策略。</td>
+              <td><span class="tag cache">状态记录</span></td>
+              <td><button class="path-action secondary" data-preview="prefs">查看记录说明</button></td>
+            </tr>
+            <tr>
+              <td><strong>编辑器上传根目录</strong></td>
+              <td><span class="path">RemoteUpload/Common/group.bytes<br/>RemoteUpload/Common/gamedata/{GroupName}.bytes</span></td>
+              <td>编辑器工具约定的远端目录镜像，不会自动打进 Unity 包体。</td>
+              <td><span class="tag editor">编辑器输出</span></td>
+              <td><button class="path-action secondary" data-preview="remote-upload-public">查看本地目录</button></td>
+            </tr>
+            <tr>
+              <td><strong>国家上传目录</strong></td>
+              <td><span class="path">RemoteUpload/{Country}/group.bytes<br/>RemoteUpload/{Country}/gamedata/{GroupName}.bytes</span></td>
+              <td>国家开关开启时，上传到对应国家目录。</td>
+              <td><span class="tag editor">编辑器输出</span></td>
+              <td><button class="path-action secondary" data-preview="remote-upload-country">查看本地目录</button></td>
+            </tr>
+            <tr>
+              <td><strong>商业化配置</strong></td>
+              <td><span class="path">RemoteUpload/commercial/ChannelConfig{Index}.bytes<br/>RemoteUpload/{Country}/commercial/ChannelConfig{Index}.bytes</span></td>
+              <td>由 ChannelABConfig 导出；当前 InitRemoteGroupDataTask 不负责运行时请求。</td>
+              <td><span class="tag editor">独立链路</span></td>
+              <td><button class="path-action secondary" data-preview="commercial">查看模拟文件</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card warning" style="margin-top:16px">
+        <strong>目录迁移提示：</strong>公共资源现在统一放在 <code>Common/</code> 下。旧的服务器根目录直铺文件，以及本地 <code>RemoteUpload/group.bytes</code>、<code>RemoteUpload/gamedata/...</code>，不会被新的公共默认路径命中；发布时需要放到 <code>RemoteUpload/Common/</code> 对应目录后再上传。
+      </div>
+    </section>
+
+    <section id="local-statistics">
+      <div class="section-title">
+        <h2>本地配置与资源统计</h2>
+        <p>根据当前工作区实际文件扫描；点击下面的文件即可查看模拟内容</p>
+      </div>
+      <div class="local-stat-grid">
+        <div class="local-stat"><span class="caption">RemoteSystem 目录</span><span class="number">33</span><span class="caption">个文件 / 188,735 bytes</span></div>
+        <div class="local-stat"><span class="caption">运行时元配置</span><span class="number">520 B</span><span class="caption">RemoteGroupRuntimeConfig.bytes</span></div>
+        <div class="local-stat"><span class="caption">RemoteData 样例</span><span class="number">4</span><span class="caption">个 .bytes / 1,797 bytes</span></div>
+        <div class="local-stat"><span class="caption">StreamingAssets</span><span class="number">3</span><span class="caption">个 .bytes / 未包含 Default</span></div>
+        <div class="local-stat"><span class="caption">RemoteUpload</span><span class="number">0</span><span class="caption">当前未发现上传文件</span></div>
+      </div>
+      <div class="file-browser" style="margin-top:16px">
+        <div class="card">
+          <h3>本地 / 模拟文件树</h3>
+          <p class="muted small">本地文件会显示实际扫描结果；远端、沙盒和空目录会显示对应的模拟状态。</p>
+          <div class="file-list">
+            <button class="file-entry active" data-preview="runtime-config"><strong>运行时元配置</strong><span>Assets/Resources/RemoteGroupRuntimeConfig.bytes</span></button>
+            <button class="file-entry" data-preview="channel-ab"><strong>ChannelABConfig 本地资源</strong><span>Assets/BizzaWZ/Final/Sdk/RemoteSystem/Configs/ChannelABConfig.asset</span></button>
+            <button class="file-entry" data-preview="sample-strategy"><strong>RemoteData 策略样例</strong><span>Assets/RemoteData/group.bytes</span></button>
+            <button class="file-entry" data-preview="sample-group1"><strong>RemoteData 关卡样例 group1</strong><span>Assets/RemoteData/gamedata/group1.bytes</span></button>
+            <button class="file-entry" data-preview="sample-group2"><strong>RemoteData 关卡样例 group2</strong><span>Assets/RemoteData/gamedata/group2.bytes</span></button>
+            <button class="file-entry" data-preview="sample-group3"><strong>RemoteData 关卡样例 group3</strong><span>Assets/RemoteData/gamedata/group3.bytes</span></button>
+            <button class="file-entry" data-preview="local-default"><strong>本地 Default 预期文件</strong><span>Assets/StreamingAssets/RemoteGroup/Default.bytes</span></button>
+            <button class="file-entry" data-preview="remote-upload-public"><strong>编辑器公共上传目录</strong><span>RemoteUpload/Common/</span></button>
+            <button class="file-entry" data-preview="remote-public-strategy"><strong>远端公共策略模拟</strong><span>https://bizzatest.popemusic.us/Common/group.bytes</span></button>
+            <button class="file-entry" data-preview="remote-public-game"><strong>远端公共关卡模拟</strong><span>https://bizzatest.popemusic.us/Common/gamedata/group1.bytes</span></button>
+          </div>
+        </div>
+        <div class="preview-panel" id="preview-panel">
+          <div class="preview-head"><div><h3 id="preview-title">运行时元配置</h3><div id="preview-path" class="path">Assets/Resources/RemoteGroupRuntimeConfig.bytes</div></div><span id="preview-status" class="preview-status">本地存在</span></div>
+          <div id="preview-content" class="preview-content"></div>
+          <div id="preview-meta" class="preview-meta"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <h2>配置开关如何决定路径</h2>
+        <p>Group 开关只影响策略，Level 开关只影响非 Default 关卡</p>
+      </div>
+      <div class="decision">
+        <div class="card">
+          <div class="decision-list">
+            <div class="decision-row"><strong>CountryGroupEnabled</strong><span>决定策略使用 <code>Common/group.bytes</code> 还是 <code>{Country}/group.bytes</code>。</span></div>
+            <div class="decision-row"><strong>CountryLevelEnabled</strong><span>决定非 Default 关卡使用 <code>Common/gamedata/{Group}.bytes</code> 还是国家目录。</span></div>
+            <div class="decision-row"><strong>CountryType=具体国家</strong><span>例如 US，国家前缀为 <code>/US/</code>。</span></div>
+            <div class="decision-row"><strong>CountryType=None</strong><span>如果任意国家开关开启，则不请求远端，直接走本地 Default；如果两个开关都关闭，则仍走公共远端并正常随机。</span></div>
+          </div>
+        </div>
+        <div class="card soft">
+          <h3>例：US + 两个开关都开启</h3>
+          <p class="path">策略：{Root}/US/group.bytes</p>
+          <p class="path">关卡：{Root}/US/gamedata/group1.bytes</p>
+          <p class="muted small">Default 仍然读取唯一的本地 Default.bytes，不下载 US 版 Default。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="calculator">
+      <div class="section-title">
+        <h2>路径计算器</h2>
+        <p>修改参数可即时查看运行时会拼出的路径</p>
+      </div>
+      <div class="card calculator">
+        <div class="form-grid">
+          <label>RemoteRootUrl<input id="root" type="text" value="https://bizzatest.popemusic.us/" /></label>
+          <label>RemoteGroupDataName<input id="strategy" type="text" value="group.bytes" /></label>
+          <label>GameDataDirectoryName<input id="gameDir" type="text" value="gamedata" /></label>
+          <label>CommonDirectoryName<input id="commonDir" type="text" value="Common" /></label>
+          <label>UserGroupName<input id="group" type="text" value="group1" /></label>
+          <label>CountryType<input id="country" type="text" value="US" placeholder="None / US / BR ..." /></label>
+          <label>UserGroupDefaultName<input id="defaultGroup" type="text" value="Default" /></label>
+        </div>
+        <div class="checks">
+          <label><input id="countryGroup" type="checkbox" /> CountryGroupEnabled</label>
+          <label><input id="countryLevel" type="checkbox" /> CountryLevelEnabled</label>
+        </div>
+        <div class="calc-output">
+          <strong id="calcTitle">当前结果</strong>
+          <span id="strategyUrl" class="path"></span>
+          <span id="gameUrl" class="path"></span>
+          <div id="calcNote" class="calc-note"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="flow">
+      <div class="section-title">
+        <h2>完整下载流程</h2>
+        <p>从 Loading 任务到最终缓存</p>
+      </div>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-index">1</div>
+          <div class="flow-box"><strong>进入 Loading</strong><p><code>BIZZA_REMOTEGROUPDATA</code> 开启时，GameMode_Loading 添加 InitRemoteGroupDataTask。</p></div>
+          <div class="flow-box"><strong>加载本地元配置</strong><p>读取 Resources/RemoteGroupRuntimeConfig.bytes，解密后得到 URL、超时、重试和国家开关。</p></div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-index">2</div>
+          <div class="flow-box"><strong>国家判断</strong><p>国家开关开启时等待 AccountModule 用户数据；国家为 None 时直接本地 Default。</p></div>
+          <div class="flow-box local-box"><strong>已有正式记录？</strong><p>完成标记存在且缓存校验成功，就跳过远端策略和关卡下载。</p></div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-index">3</div>
+          <div class="flow-box remote-box"><strong>GET 分组策略</strong><p>公共模式请求 Common/group.bytes；国家模式请求 {Country}/group.bytes。超时 5 秒，RetryTimes=2 时最多尝试 3 次。</p></div>
+          <div class="flow-box remote-box"><strong>解析与随机</strong><p>RGCFG1 解密 → Base64 → RGSB → 校验版本/数量/权重 → UnityEngine.Random 按权重选择分组。</p></div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-index">4</div>
+          <div class="flow-box local-box"><strong>选中 Default</strong><p>读取包内 StreamingAssets/RemoteGroup/Default.bytes，不请求远端 Default。</p></div>
+          <div class="flow-box remote-box"><strong>选中其它组</strong><p>公共模式请求 Common/gamedata/{UserGroupName}.bytes，国家模式请求 {Country}/gamedata/{UserGroupName}.bytes，只下载当前随机命中的一组。</p></div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-index">5</div>
+          <div class="flow-box local-box"><strong>成功提交</strong><p>校验非空；远端包写入 tmp、替换目标、回读；然后写 PlayerPrefs 和会话内存。</p></div>
+          <div class="flow-box fail-box"><strong>任意步骤失败</strong><p>本次尝试本地 Default，不写正式完成标记，下次启动继续允许重试；如果 Default 也失败，外层任务仍会记录日志并结束。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <h2>文件内容格式索引</h2>
+        <p>路径正确还不够，文件内容也必须符合当前实现</p>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>group.bytes</h3>
+          <ol>
+            <li>外层文本以 <code>RGCFG1:</code> 开头。</li>
+            <li>解密后是 Base64 文本。</li>
+            <li>Base64 解码后以 <code>RGSB</code> 开头。</li>
+            <li>包含版本号、分组数量、分组名和 Float 权重。</li>
+            <li>权重小于等于 0 的项不会进入随机选择。</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>gamedata/{GroupName}.bytes</h3>
+          <ol>
+            <li>运行时当前只校验文件非空。</li>
+            <li>编辑器预览器可以识别 <code>RGPK</code> 包头。</li>
+            <li>运行时不会解析 RGPK，也不会自动注册关卡。</li>
+            <li>分组名必须与策略中的 UserGroupName 和文件名完全对应。</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="boundaries">
+      <div class="section-title">
+        <h2>当前实现的边界与容易误解的地方</h2>
+        <p>这些不是文档建议，而是当前代码的实际行为</p>
+      </div>
+      <details open>
+        <summary>不会下载全部分组</summary>
+        <div>策略中即使有 Default、group1、group2、group3，运行时也只会随机选中一个用户组，并下载该组的一个 gamedata 文件。</div>
+      </details>
+      <details open>
+        <summary>不会下载远端 Default.bytes</summary>
+        <div>Default 始终是包内本地回退文件，路径固定为 Assets/StreamingAssets/RemoteGroup/Default.bytes。</div>
+      </details>
+      <details>
+        <summary>策略缓存当前没有参与正常复用</summary>
+        <div>代码会把远端 group.bytes 写入 persistentDataPath/RemoteGroup/group.bytes，但正常启动的复用判断主要依赖 PlayerPrefs 和所选分组的 gamedata 缓存。</div>
+      </details>
+      <details>
+        <summary>商业化配置导出不等于商业化运行时拉取</summary>
+        <div>ChannelABConfig 可以导出 commercial 目录下的 CHAB 文件，但 InitRemoteGroupDataTask 不负责请求和解析这些文件；它们属于独立链路。</div>
+      </details>
+      <details>
+        <summary>当前没有找到远端关卡字节的玩法消费方</summary>
+        <div>在当前工程搜索范围内，TryGetCurrentGameDataBytes 主要被 RemoteSystem 编辑器工具调用；运行时业务目前能明确看到的消费是 UserGroup 埋点，而不是关卡二进制解析。</div>
+      </details>
+    </section>
+
+    <section id="optimize">
+      <div class="section-title">
+        <h2>面向优化的建议排序</h2>
+        <p>这里只给方向，不在本报告中修改代码</p>
+      </div>
+      <div class="priority">
+        <div class="priority-item"><span class="priority-level p0">P0</span><div><strong>统一资源目录并补齐 Default</strong><br/><span class="muted">明确 Assets/RemoteData、RemoteUpload、StreamingAssets 和 persistentDataPath 的职责；确保 Default.bytes 在构建包内真实存在。</span></div></div>
+        <div class="priority-item"><span class="priority-level p0">P0</span><div><strong>明确二进制最终消费者</strong><br/><span class="muted">如果远端关卡配置要影响玩法，需要指定业务解析器和注册入口；目前 RemoteSystem 只负责传递原始 bytes。</span></div></div>
+        <div class="priority-item"><span class="priority-level p1">P1</span><div><strong>缓存绑定国家、版本和配置签名</strong><br/><span class="muted">避免国家切换、远端根地址变化或配置更新后继续复用旧分组和旧 gamedata。</span></div></div>
+        <div class="priority-item"><span class="priority-level p1">P1</span><div><strong>增加 RGPK / checksum / 签名校验</strong><br/><span class="muted">当前关卡文件只检查非空；错误文件也可能被正式缓存。</span></div></div>
+        <div class="priority-item"><span class="priority-level p1">P1</span><div><strong>决定策略缓存是删除还是启用</strong><br/><span class="muted">现在 group.bytes 会写入沙盒但不参与正常策略复用，属于未闭环缓存。</span></div></div>
+        <div class="priority-item"><span class="priority-level p2">P2</span><div><strong>改善弱网和测试体验</strong><br/><span class="muted">增加退避、取消、下载进度、缓存清理和编辑器发布前全量路径预检。</span></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <h2>代码与文档索引</h2>
+        <p>说明文档作为参考，实际行为以代码为准</p>
+      </div>
+      <div class="card small">
+        <ul>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/Scripts/RemoteGroupDataSystem.cs">RemoteGroupDataSystem.cs</a>：运行时主流程、请求、缓存、回退和状态。</li>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/Scripts/RemoteGroupRuntimeConfig.cs">RemoteGroupRuntimeConfig.cs</a>：字段定义、URL 拼接、国家目录规则。</li>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/Scripts/RemoteGroupBinaryUtility.cs">RemoteGroupBinaryUtility.cs</a>：RGSB 策略二进制格式。</li>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/Scripts/LoadGamePlayTask.cs">LoadGamePlayTask.cs</a>：InitRemoteGroupDataTask 和国家数据等待逻辑。</li>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/Editor/RemoteGroupConfigWindow.cs">RemoteGroupConfigWindow.cs</a>：运行时配置、策略、国家策略和商业化文件导出。</li>
+          <li><a href="Assets/BizzaWZ/Final/Sdk/RemoteSystem/RemoteGroupSystem.md">RemoteGroupSystem.md</a>：系统说明、上传目录和测试说明。</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      报告文件：RemoteSystem_Report.html · 分析范围：E:/Puzzle_Project/BizzaWZ/BizzaWZ · 本报告为静态只读汇报，不会自动修改远端文件或 Unity 项目资源。
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const ids = ["root", "strategy", "gameDir", "commonDir", "group", "country", "defaultGroup", "countryGroup", "countryLevel"];
+      const $ = (id) => document.getElementById(id);
+      const cleanRoot = (value) => (value || "").trim().replace(/\\/g, "/").replace(/\/+$/, "");
+      const cleanPart = (value, fallback) => {
+        const text = (value || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+        return text || fallback;
+      };
+      function refresh() {
+        const root = cleanRoot($("root").value);
+        const strategy = cleanPart($("strategy").value, "group.bytes");
+        const gameDir = cleanPart($("gameDir").value, "gamedata");
+        const commonDir = cleanPart($("commonDir").value, "Common");
+        const group = cleanPart($("group").value, "group1");
+        const country = cleanPart($("country").value, "None");
+        const defaultGroup = cleanPart($("defaultGroup").value, "Default");
+        const useCountryGroup = $("countryGroup").checked;
+        const useCountryLevel = $("countryLevel").checked;
+        const hasConcreteCountry = country.toLowerCase() !== "none" && country !== "";
+        const rootPrefix = root ? root + "/" : "";
+        const strategyDirectoryPrefix = useCountryGroup && hasConcreteCountry ? country + "/" : commonDir + "/";
+        const gameDirectoryPrefix = useCountryLevel && hasConcreteCountry ? country + "/" : commonDir + "/";
+        const strategyUrl = rootPrefix + strategyDirectoryPrefix + strategy;
+        const gameUrl = rootPrefix + gameDirectoryPrefix + gameDir + "/" + group + ".bytes";
+        const countryModeNone = (useCountryGroup || useCountryLevel) && !hasConcreteCountry;
+        $("strategyUrl").textContent = "策略地址：" + strategyUrl;
+        $("gameUrl").textContent = "非 Default 关卡地址：" + gameUrl;
+        if (countryModeNone) {
+          $("calcTitle").textContent = "当前结果：不请求远端";
+          $("calcNote").textContent = "任意国家开关开启且 CountryType=None，运行时代码会清理正式分组记录并直接使用本地 " + defaultGroup + ".bytes；上面两条 URL 仅是路径组合结果，不会在该状态下真正发起请求。";
+        } else if (group.toLowerCase() === defaultGroup.toLowerCase()) {
+          $("calcTitle").textContent = "当前结果：策略可请求，Default 关卡走本地";
+          $("calcNote").textContent = "如果策略随机选中 " + defaultGroup + "，不会请求上面的 gamedata URL，而是读取 Assets/StreamingAssets/RemoteGroup/Default.bytes。";
+        } else {
+          $("calcTitle").textContent = "当前结果：公共/国家远端路径可请求";
+          $("calcNote").textContent = "实际是否请求取决于是否已有有效 PlayerPrefs 完成记录和沙盒缓存；有有效缓存时会跳过远端请求。";
+        }
+      }
+      ids.forEach((id) => {
+        const node = $(id);
+        node.addEventListener("input", refresh);
+        node.addEventListener("change", refresh);
+      });
+      refresh();
+    })();
+
+    (function () {
+      const previews = {
+        "runtime-config": {
+          title: "运行时元配置",
+          path: "Assets/Resources/RemoteGroupRuntimeConfig.bytes",
+          status: "本地存在",
+          size: "520 bytes",
+          href: "Assets/Resources/RemoteGroupRuntimeConfig.bytes",
+          content: `解密后的配置内容：
+{
+  "RemoteRootUrl": "https://bizzatest.popemusic.us/",
+  "RemoteGroupDataName": "group.bytes",
+  "GameDataDirectoryName": "gamedata",
+  "CommonDirectoryName": "Common",
+  "Timeout": 5.0,
+  "RetryTimes": 2,
+  "UserGroupDefaultName": "Default",
+  "CountryGroupEnabled": false,
+  "CountryLevelEnabled": false
+}`,
+          meta: "运行时通过 Resources.Load<TextAsset>(\"RemoteGroupRuntimeConfig\") 读取；文件本体是 RGCFG1 包装的配置文本。"
+        },
+        "channel-ab": {
+          title: "ChannelABConfig 本地资源",
+          path: "Assets/BizzaWZ/Final/Sdk/RemoteSystem/Configs/ChannelABConfig.asset",
+          status: "本地存在",
+          size: "3,403 bytes",
+          href: "Assets/BizzaWZ/Final/Sdk/RemoteSystem/Configs/ChannelABConfig.asset",
+          content: `Unity ScriptableObject 配置摘要：
+groupConfigName: ChannelConfig
+StartGroupIndexAtOne: false
+国家配置：4 项（国家枚举 1 / 2 / 3 / None）
+每个国家配置：4 条 gameAB_Datas
+
+用途：由编辑器导出 commercial/ChannelConfig{Index}.bytes。
+注意：InitRemoteGroupDataTask 当前不直接请求这些商业化文件。`,
+          meta: "本地资源大小来自当前工作区扫描；ChannelABConfig.cs 负责 CHAB 文件导出。"
+        },
+        "sample-strategy": {
+          title: "RemoteData 策略样例",
+          path: "Assets/RemoteData/group.bytes",
+          status: "本地存在 / 样例",
+          size: "111 bytes",
+          href: "Assets/RemoteData/group.bytes",
+          content: `文件本体：RGCFG1:<Base64>
+解密并解析后的 RGSB 策略：
+
+Magic: RGSB
+Version: 1
+GroupCount: 4
+
+Default  weight=1
+group1   weight=1
+group2   weight=1
+group3   weight=1
+
+理论随机概率：每组 25%。
+注意：该文件位于 Assets/RemoteData，运行时代码不会从这里读取。`,
+          meta: "这是仓库内的旧/测试样例，不等同于当前远端服务器实际返回内容。"
+        },
+        "sample-group1": {
+          title: "RemoteData 关卡样例 group1",
+          path: "Assets/RemoteData/gamedata/group1.bytes",
+          status: "本地存在 / 样例",
+          size: "562 bytes",
+          href: "Assets/RemoteData/gamedata/group1.bytes",
+          content: `包头：RGPK
+版本：1
+公共字段：
+  分组名：group1
+  远端标识：REMOTE_GROUP_1
+  配置说明：Temporary game config loaded from group1.
+
+运行时当前只校验非空，不解析全部 RGPK 内容。`,
+          meta: "该文件是本地样例；正式运行时非 Default 文件来自远端并写入 persistentDataPath。"
+        },
+        "sample-group2": {
+          title: "RemoteData 关卡样例 group2",
+          path: "Assets/RemoteData/gamedata/group2.bytes",
+          status: "本地存在 / 样例",
+          size: "562 bytes",
+          href: "Assets/RemoteData/gamedata/group2.bytes",
+          content: `包头：RGPK
+版本：1
+公共字段：
+  分组名：group2
+  远端标识：REMOTE_GROUP_2
+  配置说明：Temporary game config loaded from group2.
+
+运行时当前只校验非空，不解析全部 RGPK 内容。`,
+          meta: "该文件是本地样例；正式运行时非 Default 文件来自远端并写入 persistentDataPath。"
+        },
+        "sample-group3": {
+          title: "RemoteData 关卡样例 group3",
+          path: "Assets/RemoteData/gamedata/group3.bytes",
+          status: "本地存在 / 样例",
+          size: "562 bytes",
+          href: "Assets/RemoteData/gamedata/group3.bytes",
+          content: `包头：RGPK
+版本：1
+公共字段：
+  分组名：group3
+  远端标识：REMOTE_GROUP_3
+  配置说明：Temporary game config loaded from group3.
+
+运行时当前只校验非空，不解析全部 RGPK 内容。`,
+          meta: "该文件是本地样例；正式运行时非 Default 文件来自远端并写入 persistentDataPath。"
+        },
+        "local-default": {
+          title: "本地 Default 预期文件",
+          path: "Assets/StreamingAssets/RemoteGroup/Default.bytes",
+          status: "当前工作区缺失",
+          statusClass: "missing",
+          size: "未找到",
+          content: `当前工作区扫描结果：文件不存在。
+
+运行时需要它来处理：
+1. 策略随机选中 Default；
+2. 远端请求失败后的本地回退；
+3. 开启国家配置但 CountryType=None。
+
+如果构建前没有由外部流程生成该文件，Default 路径不具备实际回退条件。`,
+          meta: "预期路径：Assets/StreamingAssets/RemoteGroup/Default.bytes。"
+        },
+        "remote-public-strategy": {
+          title: "远端公共分组策略（模拟）",
+          path: "https://bizzatest.popemusic.us/Common/group.bytes",
+          status: "模拟远端文件",
+          statusClass: "virtual",
+          content: `GET https://bizzatest.popemusic.us/Common/group.bytes
+
+预期响应：
+RGCFG1:<Base64>
+
+运行时处理：
+RGCFG1 解密 → Base64 解码 → RGSB 解析 → 按权重随机。
+
+当前报告没有主动请求服务器；这里展示的是按当前本地配置拼出的远端路径和文件格式。`,
+          meta: "当前 CountryGroupEnabled=false，因此公共模式使用 Common 目录。"
+        },
+        "remote-country-strategy": {
+          title: "远端国家分组策略（模拟）",
+          path: "https://bizzatest.popemusic.us/{Country}/group.bytes",
+          status: "模拟远端文件",
+          statusClass: "virtual",
+          content: `示例：CountryType=US
+GET https://bizzatest.popemusic.us/US/group.bytes
+
+只有 CountryGroupEnabled=true 且 CountryType 是具体国家时，运行时才使用该路径。`,
+          meta: "CountryType=None 且任意国家开关开启时，运行时不会请求这条路径。"
+        },
+        "remote-public-game": {
+          title: "远端公共关卡（模拟）",
+          path: "https://bizzatest.popemusic.us/Common/gamedata/group1.bytes",
+          status: "模拟远端文件",
+          statusClass: "virtual",
+          content: `GET https://bizzatest.popemusic.us/Common/gamedata/group1.bytes
+
+预期响应：非空的关卡二进制内容，通常应带有 RGPK 包头。
+
+运行时动作：请求 → 非空校验 → 写入沙盒 → 回读校验 → 写 PlayerPrefs。`,
+          meta: "只有随机选中 group1 且没有有效缓存时才会请求。"
+        },
+        "remote-country-game": {
+          title: "远端国家关卡（模拟）",
+          path: "https://bizzatest.popemusic.us/{Country}/gamedata/{GroupName}.bytes",
+          status: "模拟远端文件",
+          statusClass: "virtual",
+          content: `示例：CountryType=US，GroupName=group1
+GET https://bizzatest.popemusic.us/US/gamedata/group1.bytes
+
+只有 CountryLevelEnabled=true 且 CountryType 是具体国家时，运行时才使用国家目录。`,
+          meta: "Default 不会走国家版远端文件，始终使用本地 Default.bytes。"
+        },
+        "strategy-cache": {
+          title: "策略沙盒缓存（模拟）",
+          path: "Application.persistentDataPath/RemoteGroup/group.bytes",
+          status: "运行时写入",
+          statusClass: "virtual",
+          content: `用途：保存最近一次成功请求到的原始 group.bytes 响应。
+
+当前行为：会写入，但正常启动的策略复用逻辑不会读取它；真正影响后续启动的是 PlayerPrefs 完成标记和 gamedata 缓存。`,
+          meta: "这是设备沙盒路径，无法从项目目录直接查看实际设备文件。"
+        },
+        "game-cache": {
+          title: "分组关卡沙盒缓存（模拟）",
+          path: "Application.persistentDataPath/RemoteGroup/gamedata/{GroupName}.bytes",
+          status: "运行时写入 / 后续复用",
+          statusClass: "virtual",
+          content: `示例：
+Application.persistentDataPath/RemoteGroup/gamedata/group1.bytes
+
+写入条件：远端下载成功、非空校验成功、临时文件回读校验成功。
+后续启动：PlayerPrefs 完成标记存在时优先读取。`,
+          meta: "这是设备沙盒路径，实际位置取决于平台和 Application.persistentDataPath。"
+        },
+        "prefs": {
+          title: "正式分组记录",
+          path: "PlayerPrefs: RemoteGroup.AssignmentCompleted / RemoteGroup.UserGroupName",
+          status: "运行时状态",
+          statusClass: "virtual",
+          content: `RemoteGroup.AssignmentCompleted = 1
+RemoteGroup.UserGroupName = group1 / group2 / group3 / Default
+
+只有分组和对应数据成功后才会写入。
+远端失败回退到 Default 时，不写远端分组完成记录。`,
+          meta: "PlayerPrefs 不属于项目文件，保存在设备本地。"
+        },
+        "remote-upload-public": {
+          title: "编辑器公共上传目录",
+          path: "RemoteUpload/Common/",
+          status: "当前为空",
+          statusClass: "missing",
+          size: "0 个文件",
+          content: `编辑器约定的输出结构：
+RemoteUpload/
+├─ Common/
+│  ├─ group.bytes
+│  └─ gamedata/
+│     ├─ group1.bytes
+│     └─ group2.bytes
+
+当前工作区扫描结果：RemoteUpload 目录存在，但没有发现正式上传文件。`,
+          meta: "该目录位于 Assets 外，不会被 Unity 自动打进包体。"
+        },
+        "remote-upload-country": {
+          title: "编辑器国家上传目录",
+          path: "RemoteUpload/{Country}/",
+          status: "模拟目录",
+          statusClass: "virtual",
+          content: `示例：Country=US
+RemoteUpload/US/group.bytes
+RemoteUpload/US/gamedata/group1.bytes
+
+CountryGroupEnabled 控制 group.bytes 是否生成国家策略副本。
+CountryLevelEnabled 控制非 Default gamedata 是否放在国家目录。`,
+          meta: "正式上传前需要保证策略中的每个非 Default 分组都有对应文件。"
+        },
+        "commercial": {
+          title: "商业化配置（模拟）",
+          path: "RemoteUpload/commercial/ChannelConfig{Index}.bytes",
+          status: "编辑器导出链路",
+          statusClass: "virtual",
+          content: `示例输出：
+RemoteUpload/commercial/ChannelConfig0.bytes
+RemoteUpload/US/commercial/ChannelConfig0.bytes
+
+文件格式：CHAB
+来源：ChannelABConfig.asset
+当前 InitRemoteGroupDataTask 不负责运行时请求这些文件。`,
+          meta: "商业化文件由编辑器导出，属于独立于 RemoteGroupDataSystem 的链路。"
+        }
+      };
+
+      function showPreview(key) {
+        const item = previews[key] || previews["runtime-config"];
+        document.getElementById("preview-title").textContent = item.title;
+        document.getElementById("preview-path").textContent = item.path;
+        const status = document.getElementById("preview-status");
+        status.textContent = item.status;
+        status.className = "preview-status " + (item.statusClass || "");
+        document.getElementById("preview-content").textContent = item.content || "暂无模拟内容。";
+        const link = item.href ? ` · <a href="${item.href}" target="_blank" rel="noreferrer">打开原文件</a>` : "";
+        document.getElementById("preview-meta").innerHTML = (item.size ? "文件信息：" + item.size + " · " : "") + (item.meta || "") + link;
+        document.querySelectorAll("[data-preview]").forEach((node) => {
+          if (node.classList.contains("file-entry")) node.classList.toggle("active", node.dataset.preview === key);
+        });
+        document.getElementById("preview-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      document.querySelectorAll("[data-preview]").forEach((node) => {
+        node.addEventListener("click", () => showPreview(node.dataset.preview));
+      });
+      showPreview("runtime-config");
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "module": "CommonPublic",
+  "version": "1.4.0",
+  "sourceRoot": "",
+  "items": [
+    {
+      "name": "CommonPublic 公共目录（递归复制）",
+      "source": "Assets/BizzaWZ/Final/FunctionTools/CommonPublic",
+      "destination": "@SHARED/CommonPublic",
+      "isDirectory": true,
+      "required": true,
+      "category": "SDK/IP 公共代码、设备采集、UI/日志及 Android 依赖",
+      "shared": true
+    },
+    {
+      "name": "Android Gradle 模板",
+      "source": "Assets/Plugins/Android/mainTemplate.gradle",
+      "destination": "@SHARED/Android/mainTemplate.gradle",
+      "isDirectory": false,
+      "required": true,
+      "category": "公共 Android GAID 依赖模板",
+      "shared": true
+    }
+  ]
+}

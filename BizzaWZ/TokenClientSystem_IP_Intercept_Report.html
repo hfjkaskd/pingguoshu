@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TokenClientSystem · IP 拦截分析报告</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #dbe3ef;
+      --blue: #2563eb;
+      --blue-soft: #eaf1ff;
+      --green: #138a55;
+      --green-soft: #e7f7ef;
+      --amber: #a16207;
+      --amber-soft: #fff7df;
+      --red: #c2413b;
+      --red-soft: #fff0ef;
+      --purple: #6d46c1;
+      --purple-soft: #f2edff;
+      --shadow: 0 10px 30px rgba(30, 55, 90, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.65 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 34px 22px 60px; }
+    .hero {
+      background: linear-gradient(135deg, #172554 0%, #1d4ed8 58%, #38bdf8 100%);
+      color: white; border-radius: 22px; padding: 30px 34px; box-shadow: var(--shadow);
+    }
+    .eyebrow { opacity: .78; letter-spacing: .08em; font-size: 12px; }
+    h1 { margin: 8px 0 10px; font-size: 30px; line-height: 1.25; }
+    .hero p { margin: 0; max-width: 850px; opacity: .92; }
+    .stamp { margin-top: 18px; font-size: 12px; opacity: .72; }
+    .grid { display: grid; gap: 16px; }
+    .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 20px 0; }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: 0 4px 16px rgba(30,55,90,.04); }
+    .metric { min-height: 126px; }
+    .metric .label { color: var(--muted); font-size: 12px; }
+    .metric .value { margin: 8px 0 4px; font-size: 20px; font-weight: 800; }
+    .metric .desc { color: var(--muted); font-size: 12px; }
+    .danger { color: var(--red); }
+    .success { color: var(--green); }
+    .warning { color: var(--amber); }
+    .info { color: var(--blue); }
+    h2 { margin: 30px 0 12px; font-size: 21px; }
+    h3 { margin: 0 0 10px; font-size: 16px; }
+    p { margin: 8px 0; }
+    .callout { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 14px 16px; border-radius: 10px; }
+    .callout.warn { border-color: var(--amber); background: var(--amber-soft); }
+    .callout.danger-box { border-color: var(--red); background: var(--red-soft); }
+    .callout.good { border-color: var(--green); background: var(--green-soft); }
+    .tag { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; margin-right: 5px; }
+    .tag.red { color: var(--red); background: var(--red-soft); }
+    .tag.green { color: var(--green); background: var(--green-soft); }
+    .tag.amber { color: var(--amber); background: var(--amber-soft); }
+    .tag.blue { color: var(--blue); background: var(--blue-soft); }
+    .tag.purple { color: var(--purple); background: var(--purple-soft); }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 9px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-size: 12px; font-weight: 700; background: #f8fafc; }
+    td:first-child { width: 25%; font-weight: 700; }
+    code, pre { font-family: Consolas, "SFMono-Regular", monospace; }
+    code { background: #f1f5f9; padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+    pre { margin: 10px 0 0; padding: 14px; overflow: auto; border-radius: 10px; background: #101827; color: #dbeafe; font-size: 12px; line-height: 1.55; }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: stretch; margin-top: 14px; }
+    .step { position: relative; background: #fbfdff; border: 1px solid #cddcf6; border-radius: 12px; padding: 14px 12px; min-height: 150px; }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -18px; top: 50%; transform: translateY(-50%); color: var(--blue); font-size: 22px; font-weight: 800; z-index: 2; }
+    .step .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: white; font-weight: 800; font-size: 12px; }
+    .step strong { display: block; margin: 10px 0 6px; }
+    .step small { color: var(--muted); }
+    .branch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .branch > div { border-radius: 10px; padding: 12px; border: 1px solid var(--line); }
+    .branch .allow { background: var(--green-soft); border-color: #b9e6ce; }
+    .branch .deny { background: var(--red-soft); border-color: #f3c4c0; }
+    .branch .network { background: var(--amber-soft); border-color: #efd796; }
+    .checklist { display: grid; gap: 8px; margin-top: 10px; }
+    .check { display: flex; gap: 9px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fcfdff; }
+    .check::before { content: "□"; color: var(--blue); font-size: 18px; line-height: 1.2; }
+    .risk-list { display: grid; gap: 10px; }
+    .risk { padding: 13px 14px; border-radius: 11px; border: 1px solid var(--line); }
+    .risk b { display: block; margin-bottom: 3px; }
+    .risk.high { background: var(--red-soft); border-color: #f3c4c0; }
+    .risk.medium { background: var(--amber-soft); border-color: #efd796; }
+    .risk.low { background: var(--purple-soft); border-color: #d9cafa; }
+    details { border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; background: #fff; margin-top: 10px; }
+    summary { cursor: pointer; font-weight: 700; }
+    .muted { color: var(--muted); }
+    .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 900px) {
+      .summary, .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow .step:not(:last-child)::after { display: none; }
+    }
+    @media (max-width: 650px) {
+      .wrap { padding: 18px 12px 40px; }
+      .hero { padding: 24px 20px; }
+      h1 { font-size: 25px; }
+      .summary, .two, .branch, .flow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">BizzaWZ / TokenClientSystem</div>
+    <h1>IP 拦截机制分析报告</h1>
+    <p>结论先行：客户端没有自己读取公网 IP 并做黑白名单判断。客户端把设备、地区、运营商、VPN、Token 等信号提交给远端 Worker，由服务端返回 <code>allow</code> 决定是否允许继续加载。</p>
+    <div class="stamp">分析范围：Assets/BizzaWZ/Final/Sdk/TokenClientSystem 及其加载入口、渠道配置、设备信息桥接代码</div>
+  </section>
+
+  <section class="grid summary">
+    <div class="card metric"><div class="label">真正的判定位置</div><div class="value info">远端 Worker</div><div class="desc">客户端只消费 allow / publicReason</div></div>
+    <div class="card metric"><div class="label">客户端是否上报公网 IP 字段</div><div class="value success">没有</div><div class="desc">Worker 可从 HTTP 请求源地址看到公网 IP</div></div>
+    <div class="card metric"><div class="label">当前 Android 包是否执行拦截</div><div class="value danger">不会</div><div class="desc">Android 同时开启 DEBUG_MODE，入口条件排除了它</div></div>
+    <div class="card metric"><div class="label">授权接口</div><div class="value" style="font-size:15px;word-break:break-all">/api/v1/decision</div><div class="desc">超时 15 秒，POST JSON</div></div>
+  </section>
+
+  <div class="callout danger-box">
+    <strong>当前最关键现象</strong>
+    <p><code>ProjectSettings.asset</code> 的 Android 定义包含 <code>BIZZA_IPINTERCEPT</code> 和 <code>BIZZA_REAL_WITHDRAW</code>，但也包含 <code>DEBUG_MODE</code>；而 <code>GameMode_Loading.cs</code> 只有在 <code>BIZZA_IPINTERCEPT &amp;&amp; BIZZA_REAL_WITHDRAW &amp;&amp; !DEBUG_MODE</code> 成立时才会添加 <code>new IPCheckTask()</code>。因此当前 Android 包会编译相关脚本，但启动加载流程不会挂上 IP 拦截任务。</p>
+  </div>
+
+  <h2>一、实际运行流程</h2>
+  <section class="card">
+    <div class="flow">
+      <div class="step"><span class="num">1</span><strong>加载阶段注册任务</strong><small>GameMode_Loading 初始化 LoadingProcedure。只有宏条件满足，才添加 IPCheckTask。</small></div>
+      <div class="step"><span class="num">2</span><strong>等待公共 SDK 配置</strong><small>IPCheckTask 等待 LoadTables 和 WKY_SDK，确保 ChannelConfig.bytes 已加载并完成公共 DeviceInfoUtil 初始化。</small></div>
+      <div class="step"><span class="num">3</span><strong>采集设备信号</strong><small>Android 走 Java DeviceUtils；编辑器可使用 AuthConfig 中的模拟字段。</small></div>
+      <div class="step"><span class="num">4</span><strong>POST 授权请求</strong><small>向 WorkerUrl 发送 appId、包名、设备 JSON、旧 Token、Play Integrity Token。</small></div>
+      <div class="step"><span class="num">5</span><strong>服务端决定能否继续</strong><small>allow=true 继续加载；否则弹窗、退出并抛出 TokenClientBlockedException。</small></div>
+    </div>
+    <div class="branch">
+      <div class="allow"><span class="tag green">allow=true</span><br>如果返回新 Token，写入 PlayerPrefs 的 <code>AUTH_TOKEN</code>，加载流程继续。</div>
+      <div class="deny"><span class="tag red">allow=false</span><br>清理本地 Token，按原因显示本地化提示，非编辑器调用 <code>Application.Quit()</code>，随后抛异常阻止加载。</div>
+      <div class="network"><span class="tag amber">网络/解析失败</span><br>转成 <code>SERVER_ERROR</code>，走默认失败提示；外层加载器还会进入通用网络错误兜底。</div>
+    </div>
+  </section>
+
+  <h2>二、客户端到底检查了什么</h2>
+  <section class="grid two">
+    <div class="card">
+      <h3>请求外层参数 <span class="tag blue">AuthRequest</span></h3>
+      <table>
+        <tr><th>字段</th><th>来源 / 用途</th></tr>
+        <tr><td>requestId</td><td>每次授权新生成的 GUID，用于服务端和日志串联。</td></tr>
+        <tr><td>appId</td><td>组合接入时来自 <code>DeviceInfoUtil.Current.Os_Apid</code>，其值由 <code>ChannelConfig.Instance.AppId</code> 注入；未提供时回退到 <code>AuthConfig.bytes</code> 的 AppId，必须与 Worker 端配置一致。</td></tr>
+        <tr><td>packageName</td><td><code>Application.identifier</code>，即 Unity 包名。</td></tr>
+        <tr><td>authToken</td><td>读取本地 <code>PlayerPrefs[AUTH_TOKEN]</code>；没有则为空。</td></tr>
+        <tr><td>deviceInfoJson</td><td>设备与地区信号的 JSON 字符串，见下表。</td></tr>
+        <tr><td>playIntegrityToken</td><td>当前代码固定返回空字符串，尚未接入 Play Integrity。</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>服务端响应 <span class="tag purple">AuthResponse</span></h3>
+      <table>
+        <tr><th>字段</th><th>客户端行为</th></tr>
+        <tr><td>allow</td><td>唯一的放行开关；false 会阻断加载。</td></tr>
+        <tr><td>token</td><td>非空时保存到 <code>AUTH_TOKEN</code>，下次启动回传。</td></tr>
+        <tr><td>publicReason</td><td>支持 VPN、REGION、APP_INTEGRITY、TOKEN_INVALID、SERVER_ERROR；未知值被归一为 SERVER_ERROR。</td></tr>
+        <tr><td>debugInfo</td><td>当前 <code>EnableDebugResponse=false</code>，不会保留/打印服务端诊断内容。</td></tr>
+        <tr><td>extension</td><td>客户端反序列化但当前没有参与判断。</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h3>deviceInfoJson 字段清单</h3>
+    <table>
+      <tr><th>类别</th><th>字段</th><th>说明</th></tr>
+      <tr><td>设备标识</td><td><code>googleId</code>、<code>androidId</code>、<code>deviceUniqueIdentifier</code>、<code>packageName</code></td><td>用于设备关联/风控。日志中会脱敏，但请求本身会发送。</td></tr>
+      <tr><td>语言与地区</td><td><code>UnityLanguage</code>、<code>UnityRegionCode</code>、<code>NativeLocale</code>、<code>NativeLocaleCountry</code>、<code>NativeCountryCode</code></td><td>用于识别系统语言、Locale、国家/地区信号。</td></tr>
+      <tr><td>时区</td><td><code>UnityTimeZoneId</code>、<code>NativeTimeZoneId</code></td><td>用于地区一致性判断。</td></tr>
+      <tr><td>网络/运营商</td><td><code>SimCountryIso</code>、<code>NetworkCountryIso</code>、<code>SimOperator</code>、<code>NetworkOperator</code>、<code>NetworkOperatorName</code></td><td>用于 SIM、注册网络和运营商地区判断。</td></tr>
+      <tr><td>环境信号</td><td><code>DefaultInputMethod</code>、<code>EnabledInputMethods</code>、<code>IsVpnConnected</code></td><td>用于环境/代理/VPN 风控。</td></tr>
+      <tr><td>公网 IP</td><td><span class="tag green">不在 JSON 中</span></td><td>客户端没有获取公网 IP 的代码；服务端可通过请求连接本身识别来源 IP。</td></tr>
+    </table>
+  </section>
+
+  <h2>三、本地必须配置什么</h2>
+  <section class="card">
+    <table>
+      <tr><th>配置项</th><th>当前代码位置</th><th>要求 / 当前状态</th></tr>
+      <tr><td>编译宏</td><td><code>ProjectSettings.asset:853-855</code><br><code>GameMode_Loading.cs:46-48</code></td><td>要真正执行拦截：目标平台必须同时有 <code>BIZZA_IPINTERCEPT</code>、<code>BIZZA_REAL_WITHDRAW</code>，并移除 <code>DEBUG_MODE</code>，或调整入口条件。</td></tr>
+      <tr><td>ChannelConfig.bytes</td><td><code>Assets/StreamingAssets/ChannelConfig.bytes</code><br><code>ChannelConfigLoader.cs:44-150</code></td><td>运行时从该二进制读取 <code>AppId</code> 等渠道配置。当前文件存在；必须与序列化版本和 XXTEA Key 匹配。</td></tr>
+      <tr><td>AppId</td><td><code>AuthFlow.cs:39-45</code><br><code>WKY_Flow.cs:74-81</code></td><td>组合接入时由 <code>ChannelConfig.Instance.AppId</code> 注入公共 <code>DeviceInfoUtil</code>，授权初始化无需再传 AppId；独立运行时才使用 <code>AuthConfig.bytes</code> 中的备用 AppId。当前工程为 <code>coinstjam</code>。</td></tr>
+      <tr><td>AuthConfig.bytes</td><td><code>Assets/StreamingAssets/AuthConfig.bytes</code><br><code>AuthConfigLoader.cs</code></td><td>TokenClient 的 Worker 地址、超时、调试开关和编辑器模拟字段由此文件提供；文件缺失时回退到代码默认值。</td></tr>
+      <tr><td>Worker URL</td><td><code>AuthConfigData.WorkerUrl</code><br><code>AuthConfigEditorWindow.cs</code></td><td>值为 <code>https://iptokenclient.applebooks24.com/api/v1/decision</code>，可从 Unity 菜单 <code>Bizza → Token Client → Auth Config</code> 修改并保存；不能填入 AppId 字段。</td></tr>
+      <tr><td>超时</td><td><code>AuthConfigData.RequestTimeoutSeconds</code></td><td>默认 15 秒，可在 Auth Config 窗口修改；请求失败直接按 SERVER_ERROR 阻断，没有离线放行。</td></tr>
+      <tr><td>本地 Token</td><td><code>AuthConfigData.AuthTokenKey</code><br><code>AuthService.cs:94-95、170-186</code></td><td>默认键名为 <code>AUTH_TOKEN</code>，可配置。拒绝授权会删除，允许且返回新 Token 会覆盖保存。</td></tr>
+      <tr><td>Android 原生桥</td><td><code>DeviceNativeBridge.cs:12-35、290-423</code></td><td>需要 Java 类 <code>com.bangsawan.oceanshine.DeviceUtils</code> 实现地区、运营商、输入法、VPN 等方法，否则字段可能为空/默认值。</td></tr>
+      <tr><td>失败提示资源</td><td><code>CommonConfirmTipsPanel.cs:70-147</code></td><td>Addressables 中必须存在 <code>SDKPanel/CommonConfirmTipsPanel</code>，并有 TokenClient_VPN / REGION / APP_INTEGRITY / TOKEN_INVALID / Default 文案。</td></tr>
+    </table>
+    <div class="callout good" style="margin-top:14px">
+      <strong>生成/更新渠道二进制配置</strong>
+      <p>渠道 AppId：Unity 菜单 <code>Bizza → Channel Config</code>，保存到 <code>Assets/StreamingAssets/ChannelConfig.bytes</code>。TokenClient 参数：Unity 菜单 <code>Bizza → Token Client → Auth Config</code>，保存到 <code>Assets/StreamingAssets/AuthConfig.bytes</code>。运行时分别读取对应二进制文件，不是仅修改 Resources 下的 <code>Editor.asset</code> / <code>Oversea.asset</code>。</p>
+    </div>
+  </section>
+
+  <h2>四、编辑器本地联调参数</h2>
+  <section class="card">
+    <p><code>AuthConfigData</code> 的编辑器参数由 <code>AuthConfigEditorWindow</code> 保存到 <code>AuthConfig.bytes</code>；运行时门面位于 <code>AuthConfig.cs:76-105</code>。授权初始化使用 <code>await authFlow.Init()</code>，不需要传入 AppId。编辑器设备模拟参数必须 <code>UseEditorMockDeviceInfo=true</code> 才会生效：</p>
+    <table>
+      <tr><th>参数</th><th>当前值</th><th>模拟效果</th></tr>
+      <tr><td><code>UseEditorMockDeviceInfo</code></td><td><span class="tag green">true</span></td><td>使用下面的模拟地区/运营商/VPN字段，不调用 Android Java 设备接口。</td></tr>
+      <tr><td><code>EditorNativeLocale</code></td><td><code>en_US</code></td><td>改成 <code>zh_CN</code> 可模拟中国系统 Locale。</td></tr>
+      <tr><td><code>EditorNativeLocaleCountry</code></td><td><code>US</code></td><td>改成 <code>CN</code> 可模拟系统国家。</td></tr>
+      <tr><td><code>EditorNativeCountryCode</code></td><td><code>US</code></td><td>改成 <code>CN</code> 可模拟原生国家码。</td></tr>
+      <tr><td><code>EditorSimCountryIso</code></td><td><code>us</code></td><td>改成 <code>cn</code> 可模拟 SIM 国家。</td></tr>
+      <tr><td><code>EditorNetworkCountryIso</code></td><td><code>us</code></td><td>改成 <code>cn</code> 可模拟网络国家。</td></tr>
+      <tr><td><code>EditorSimOperator</code></td><td><code>310260</code></td><td>可改成例如 <code>46000</code> 模拟中国 SIM 运营商 MCC/MNC。</td></tr>
+      <tr><td><code>EditorNetworkOperator</code></td><td><code>310260</code></td><td>可改成例如 <code>46001</code> 模拟中国网络运营商 MCC/MNC。</td></tr>
+      <tr><td><code>EditorNetworkOperatorName</code></td><td><code>T-Mobile</code></td><td>可改成 <code>China Mobile</code> 等，模拟运营商关键词命中。</td></tr>
+      <tr><td><code>EditorIsVpnConnected</code></td><td><span class="tag green">false</span></td><td>改成 <code>true</code> 可模拟 VPN 命中。</td></tr>
+    </table>
+    <div class="callout warn" style="margin-top:14px">
+      <strong>注意：这些参数不能模拟公网 IP</strong>
+      <p>它们只能模拟服务端可能使用的地区、运营商和 VPN 信号。真正的源 IP 仍由 Worker 从 HTTP 连接侧获得，不能靠 <code>deviceInfoJson</code> 中的字段伪造。</p>
+    </div>
+  </section>
+
+  <h2>五、当前代码中的风险与异常现象</h2>
+  <section class="risk-list">
+    <div class="risk high"><b>高：当前 Android 构建不会进入 IPCheckTask</b><span>Android 定义含 <code>DEBUG_MODE</code>，入口条件显式使用 <code>!DEBUG_MODE</code>。因此日志里看不到“令牌客户端”日志，不代表 Worker 放行，而是客户端根本没有发起授权请求。</span></div>
+    <div class="risk high"><b>高：IPCheckTask 与 ChannelConfig 加载存在时序风险</b><span>IPCheckTask 只依赖 <code>LoadTables</code>；<code>ChannelConfig.bytes</code> 却在 <code>WKY_SDKTask</code> 中加载，而 WKY_SDKTask 也依赖 LoadTables/LoadGameData。LoadingProcedure 会并行执行同批次任务，IPCheckTask 可能先访问 <code>ChannelConfig.Instance.AppId</code>，导致空引用或被外层归类成 SERVER_ERROR。建议让 IPCheckTask 显式依赖 WKY_SDK，或把 ChannelConfig 提前初始化。</span></div>
+    <div class="risk medium"><b>中：Play Integrity 尚未接入</b><span><code>GeneratePlayIntegrityToken()</code> 固定返回空字符串。如果 Worker 要求完整性 Token，服务端会返回 <code>APP_INTEGRITY</code>，这是当前代码路径下的预期拒绝结果。</span></div>
+    <div class="risk medium"><b>中：失败后可能出现二次兜底弹窗</b><span>IPCheckTask 自己显示原因弹窗并退出，随后抛出 <code>TokenClientBlockedException</code>；GameMode_Loading 的外层捕获会继续显示 <code>HTTPNetworkProblem</code>。在某些平台上可能看到二次日志、二次弹窗或重复 Quit。</span></div>
+    <div class="risk low"><b>低：允许结果的日志字段不准确</b><span><code>AuthResult.Allowed()</code> 没有把 <code>HasServerResponse</code> 设为 true，所以成功时日志可能显示“有服务端响应=false”，但不影响实际 allow 判断。</span></div>
+  </section>
+
+  <h2>六、建议的最小联调顺序</h2>
+  <section class="card">
+    <div class="checklist">
+      <div class="check">为要测试的目标平台保留 <code>BIZZA_REAL_WITHDRAW</code> + <code>BIZZA_IPINTERCEPT</code>，确认移除 <code>DEBUG_MODE</code>，或临时调整 <code>GameMode_Loading.cs</code> 的条件。</div>
+      <div class="check">在 <code>Bizza → Channel Config</code> 中确认 AppId 非空，保存生成 <code>Assets/StreamingAssets/ChannelConfig.bytes</code>，并确认 Worker 使用同一个 AppId。</div>
+      <div class="check">先检查日志是否出现 <code>[令牌客户端] 启动流程开始</code>；没有这行时，不要继续排查服务器 IP 规则。</div>
+      <div class="check">编辑器测试先将 <code>UseEditorMockDeviceInfo=true</code>，用 <code>Editor...=CN</code> 或 <code>EditorIsVpnConnected=true</code> 验证不同 publicReason 的 UI 分支。</div>
+      <div class="check">真机测试确认 Android Java 类 <code>com.bangsawan.oceanshine.DeviceUtils</code> 和 Google ID 回调链路有效，再核对 Worker 侧 requestId、源 IP、appId、packageName 和 allow 结果。</div>
+      <div class="check">若出现 SERVER_ERROR，按顺序排查：宏是否真正挂任务 → ChannelConfig.Instance 是否已加载 → HTTPS/域名可达 → 响应是否为合法 JSON。</div>
+    </div>
+  </section>
+
+  <h2>七、关键代码定位</h2>
+  <section class="card">
+    <details open><summary>入口与阻断：IPCheckTask.cs</summary><p class="muted">任务注册与依赖：<code>IPCheckTask.cs:9-19</code>；执行授权与 allow 判断：<code>IPCheckTask.cs:21-56</code>；失败原因到本地化 Key 的映射：<code>IPCheckTask.cs:58-109</code>。</p></details>
+    <details><summary>请求与 Token：AuthService.cs</summary><p class="muted">授权请求组装：<code>AuthService.cs:91-139</code>；响应/Token处理：<code>AuthService.cs:164-194</code>；HTTP POST：<code>AuthService.cs:204-264</code>；原因归一化：<code>AuthService.cs:266-280</code>。</p></details>
+    <details><summary>设备字段：DeviceInfoCollector.cs</summary><p class="muted">字段定义：<code>DeviceInfoCollector.cs:10-33</code>；采集路径：<code>DeviceInfoCollector.cs:39-87</code>；编辑器模拟：<code>DeviceInfoCollector.cs:129-148</code>；JSON 序列化：<code>DeviceInfoCollector.cs:151-154</code>。</p></details>
+    <details><summary>编译开关与加载入口</summary><p class="muted">编译符号：<code>ProjectSettings/ProjectSettings.asset:852-855</code>；任务添加条件：<code>GameMode_Loading.cs:46-48</code>；加载器异常兜底：<code>GameMode_Loading.cs:102-134</code>。</p></details>
+  </section>
+
+  <div class="footer">报告基于当前工作区源码与配置静态分析生成。服务端 Worker 的具体 IP/地区规则不在本地仓库中，因此只能确认客户端上报内容和客户端对服务端结果的处理，不能从本地代码推导出服务端的精确黑名单规则。</div>
+</main>
+</body>
+</html>

@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e45cd7f71d43834ca2e7d0efdeae07f, type: 3}
+  m_Name: Oversea
+  m_EditorClassIdentifier: 
+  channel: Android
+  platformType: 2
+  AppId: coinstjam
+  editorPlatformType: 1
+  defaultLanguage: en-US
+  GM: 1
+  ScreenRecordingOpen: 0
+  debugMode: 0
+  cdnApiRootUrl: 
+  cdnDecisionPath: 
+  cdnAppId: 
+  cdnEnvironment: 
+  cdnApiVersion: 1
+  cdnClientKey: 
+  cdnTimeoutSeconds: 15
+  cdnRetryCount: 0
+  cdnFailOpen: 0
+  httpConfig:
+    domain: https://app.sportgame.top
+    doc_version: 
+    bundle_name: 
+    aes_key: AwAd!27Jam
+    salt: 
+  isReportServer: 0
+  isEditorReportServer: 0
+  incomeRate: 1
+  real_CustomConfig:
+    singleCurrencyMode: 1
+    realWithdrawPassMode: 1
+    defaultCountry: 0
+    country: 2
+    useEditorUserId: 0
+    editorUserId: 62075119512163717120
+    testECPM1000: 0
+    TestECPMValue: 0
+    openTestDevice: 0
+    testDeviceIds: []
+    GenerateFakeAndroidId: 
+    enterNewbieGuide: 0
+    failOpenAd: 0
+    versionLog: 06042326_1.0.3
+    interAdNotReady: 0
+    rewardAdNotReady: 0
+  attributeConfig: 1
+  adjustKey: v9uhu8ddvxfk
+  tenjinKey: MDHQTZIGZYRTV7DSQQWX3HNDZKEKX1QX
+  analysisSdkType: 2
+  tkConfig:
+    appId: 2d088fbd5cb9433ebfcf144eb8edea0b
+    serverUrl: https://ss.playwinner.org
+    appCode: IOS@OceanShine
+    debug: 1
+  sourceAds:
+  - AdsSource: 1
+    rewardAdId: da4ba8280923bdb6
+    interAdId: 869467bc12137f67
+    bannerAdId: 
+    openAdId: 
+  useInterReplenishReward: 1
+  useRewardReplenishInter: 0
